@@ -26,9 +26,16 @@
     .type   _tx_thread_system_return, @function
 
 _tx_thread_system_return:
+    /* Disable IRQs before building the frame, retaining the caller's
+       interrupt posture for the eventual mret. */
+    csrrci  t0, mstatus, 0x08
+    addi    sp, sp, -20*4
+    sw      t0, 16*4(sp)
+
     /* Preserve the solicited-save inputs across a subsequent core reset. */
     la      t0, tx_diag_system_return_sp
-    sw      sp, 0(t0)
+    addi    t1, sp, 20*4
+    sw      t1, 0(t0)
     la      t0, tx_diag_system_return_ra
     sw      ra, 0(t0)
 
@@ -37,7 +44,6 @@ _tx_thread_system_return:
      *  0 type (=1), 1 ra, 2 gp, 3 tp, 4..6 t0..t2,
      *  7..8 s0..s1, 9..14 a0..a5, 15 mepc, 16 mstatus.
      */
-    addi    sp, sp, -20*4
     sw      ra, 1*4(sp)
     sw      gp, 2*4(sp)
     sw      tp, 3*4(sp)
@@ -53,8 +59,6 @@ _tx_thread_system_return:
     sw      a4, 13*4(sp)
     sw      a5, 14*4(sp)
     sw      ra, 15*4(sp)
-    csrr    t0, mstatus
-    sw      t0, 16*4(sp)
     li      t0, 1
     sw      t0, 0*4(sp)
 
@@ -62,7 +66,6 @@ _tx_thread_system_return:
     li      t1, 1
     sw      t1, 0(t0)
 
-    csrci   mstatus, 0x08
     la      t0, _tx_thread_current_ptr
     lw      t1, 0(t0)
     la      t0, tx_diag_system_return_current

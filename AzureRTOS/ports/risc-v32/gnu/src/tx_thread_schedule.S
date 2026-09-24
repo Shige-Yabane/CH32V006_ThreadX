@@ -90,11 +90,10 @@ _tx_thread_schedule:
     lw      t2, 0(t1)
     addi    t2, t2, 1
     sw      t2, 0(t1)
-    /* Zephyr restores the initial frame's saved interrupt posture. */
+    /* Keep the initial frame's saved interrupt posture for diagnosis. */
     lw      t0, 16*4(sp)
     la      t1, tx_diag_initial_mstatus_after_write
     sw      t0, 0(t1)
-    csrw    mstatus, t0
     j       .Lresume_complete_frame
 
 .Lresume_interrupt_frame:
@@ -107,6 +106,9 @@ _tx_thread_schedule:
     sw      t0, 0(t1)
     csrw    mepc, t0
     lw      t0, 16*4(sp)
+    /* The voluntary frame may have MIE set.  Keep IRQs disabled until mret
+       has restored every register and SP; mret copies MPIE back to MIE. */
+    andi    t0, t0, -9
     csrw    mstatus, t0
     csrr    t0, mstatus
     la      t1, tx_diag_mstatus_before_mret
